@@ -60,6 +60,14 @@
   }
   input:focus { outline: none; border-color: var(--accent); }
 
+  /* 설정 선택 버튼 그룹 */
+  .seg { display:flex; gap:8px; }
+  .seg button {
+    flex:1; margin-top:0; padding:11px 0; font-size:.95rem;
+    background:#1c1729; color:var(--muted); border:1px solid var(--line);
+  }
+  .seg button.sel { background:var(--accent2); color:#06241f; border-color:var(--accent2); }
+
   button {
     width: 100%; padding: 14px; font-size: 1.05rem; font-family: inherit;
     border: none; border-radius: 12px; cursor: pointer; margin-top: 14px;
@@ -69,12 +77,10 @@
   button:disabled { opacity: .4; cursor: not-allowed; }
   .btn-pink { background: var(--accent); color: #2a0a18; }
   .btn-teal { background: var(--accent2); color: #06241f; }
-  .btn-ghost { background: transparent; border:1px solid var(--line); color: var(--muted); }
+  .btn-ghost { background: transparent; border:1px solid var(--line); color: var(--ink); }
   .divider { text-align:center; color: var(--muted); margin: 16px 0 2px; font-size:.8rem; }
 
-  .roomcode-show {
-    text-align:center; margin: 14px 0;
-  }
+  .roomcode-show { text-align:center; margin: 14px 0; }
   .roomcode-show .code {
     font-family:'Black Han Sans'; font-size: 2.6rem; letter-spacing: 8px;
     color: var(--gold); margin-top: 4px;
@@ -84,28 +90,24 @@
     display:flex; justify-content: space-between; align-items:center;
     margin-bottom: 14px; font-size:.85rem;
   }
-  .turn-pill {
-    padding: 7px 14px; border-radius: 999px; font-weight:bold; font-size:.85rem;
-  }
+  .turn-pill { padding: 7px 14px; border-radius: 999px; font-weight:bold; font-size:.85rem; }
   .turn-mine { background: var(--accent2); color:#06241f; }
   .turn-theirs { background: #332b48; color: var(--muted); }
 
   .bingo-count {
-    display:flex; gap:6px; align-items:center; justify-content:center; margin-bottom:16px;
+    display:flex; gap:6px; align-items:center; justify-content:center; margin-bottom:16px; flex-wrap:wrap;
   }
   .bingo-count .letter {
-    width: 34px; height: 34px; border-radius: 8px; display:flex; align-items:center;
+    width: 32px; height: 32px; border-radius: 8px; display:flex; align-items:center;
     justify-content:center; font-family:'Black Han Sans'; background:#1c1729;
-    border:1px solid var(--line); color: var(--muted);
+    border:1px solid var(--line); color: var(--muted); font-size:.95rem;
   }
   .bingo-count .letter.on { background: var(--gold); color:#2a1c00; border-color: var(--gold); }
 
-  .board {
-    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
-  }
+  .board { display: grid; gap: 8px; }
   .cell {
     aspect-ratio: 1; border-radius: 12px; border: 1px solid var(--line);
-    background:#1c1729; color: var(--ink); font-size: clamp(1.1rem, 5vw, 1.6rem);
+    background:#1c1729; color: var(--ink); font-size: clamp(1rem, 5vw, 1.6rem);
     font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center;
     font-family: inherit; transition: all .15s; position:relative;
   }
@@ -124,12 +126,11 @@
     display:flex; align-items:center; justify-content:center; z-index:50; padding:20px;
   }
   .result-box { text-align:center; }
-  .result-box .big {
-    font-family:'Black Han Sans'; font-size: clamp(3rem,16vw,5rem); line-height:1;
-  }
+  .result-box .big { font-family:'Black Han Sans'; font-size: clamp(3rem,16vw,5rem); line-height:1; }
   .win { color: var(--gold); } .lose { color: var(--muted); }
   .err { color: var(--accent); text-align:center; margin-top:10px; font-size:.85rem; min-height:1.1em;}
   .small { font-size:.78rem; color:var(--muted); text-align:center; margin-top:10px; line-height:1.5;}
+  .setinfo { text-align:center; color:var(--muted); font-size:.82rem; margin-top:10px; }
 </style>
 </head>
 <body>
@@ -141,6 +142,17 @@
   <div id="lobby" class="card">
     <label>닉네임</label>
     <input id="nameInput" placeholder="이름" maxlength="6" style="letter-spacing:0">
+
+    <label>빙고판 크기</label>
+    <div class="seg" id="sizeSeg">
+      <button data-size="3">3 × 3</button>
+      <button data-size="4">4 × 4</button>
+      <button data-size="5" class="sel">5 × 5</button>
+    </div>
+
+    <label>승리 조건 (몇 빙고?)</label>
+    <div class="seg" id="winSeg"></div>
+
     <button id="createBtn" class="btn-pink">새 방 만들기</button>
     <div class="divider">— 또는 —</div>
     <label>방 코드 입력</label>
@@ -155,6 +167,9 @@
       <div style="color:var(--muted);font-size:.85rem">방 코드</div>
       <div class="code" id="roomCodeText">----</div>
     </div>
+    <div class="setinfo" id="waitSetInfo"></div>
+    <div class="board" id="waitBoard" style="margin-top:16px"></div>
+    <button id="reshuffleWaitBtn" class="btn-ghost">🔀 숫자판 다시 섞기</button>
     <p class="small" id="waitMsg">친구가 들어오기를 기다리는 중...</p>
   </div>
 
@@ -164,10 +179,7 @@
       <span id="vsText" style="color:var(--muted)"></span>
       <span id="turnPill" class="turn-pill turn-theirs">대기</span>
     </div>
-    <div class="bingo-count" id="bingoCount">
-      <div class="letter">B</div><div class="letter">I</div><div class="letter">N</div>
-      <div class="letter">G</div><div class="letter">O</div>
-    </div>
+    <div class="bingo-count" id="bingoCount"></div>
     <div class="board" id="board"></div>
     <div class="hint" id="hint"></div>
   </div>
@@ -207,6 +219,10 @@ let myName = "나";
 let myBoard = [];
 let unsub = null;
 
+// 방장이 로비에서 고르는 설정 (게스트는 방 데이터에서 받아옴)
+let pickSize = 5;     // 보드 한 변
+let pickWin = 3;      // 승리 빙고 수
+
 const $ = (id) => document.getElementById(id);
 
 function show(screen) {
@@ -214,8 +230,13 @@ function show(screen) {
   $(screen).classList.remove("hidden");
 }
 
-function shuffleBoard() {
-  const arr = Array.from({length:25}, (_,i)=>i+1);
+// 크기에 따라 가능한 최대 빙고 줄 수 = 가로+세로+대각2
+function maxLines(size){ return size*2 + 2; }
+
+// 보드 숫자 1~(size*size) 셔플
+function shuffleBoard(size) {
+  const n = size*size;
+  const arr = Array.from({length:n}, (_,i)=>i+1);
   for (let i=arr.length-1;i>0;i--){
     const j = Math.floor(Math.random()*(i+1));
     [arr[i],arr[j]]=[arr[j],arr[i]];
@@ -229,50 +250,114 @@ function genCode() {
   return s;
 }
 
-function countBingo(board, called) {
+// 빙고 줄 수 계산 (size 가변)
+function countBingo(board, called, size) {
   const isMarked = (n) => called.includes(n);
   const g = [];
-  for (let r=0;r<5;r++){ g[r]=[]; for(let c=0;c<5;c++) g[r][c]=isMarked(board[r*5+c]); }
+  for (let r=0;r<size;r++){ g[r]=[]; for(let c=0;c<size;c++) g[r][c]=isMarked(board[r*size+c]); }
   let lines = 0;
-  for (let r=0;r<5;r++) if (g[r].every(Boolean)) lines++;
-  for (let c=0;c<5;c++) if (g.every(row=>row[c])) lines++;
-  if ([0,1,2,3,4].every(i=>g[i][i])) lines++;
-  if ([0,1,2,3,4].every(i=>g[i][4-i])) lines++;
+  for (let r=0;r<size;r++) if (g[r].every(Boolean)) lines++;
+  for (let c=0;c<size;c++) if (g.every(row=>row[c])) lines++;
+  let d1=true, d2=true;
+  for (let i=0;i<size;i++){ if(!g[i][i]) d1=false; if(!g[i][size-1-i]) d2=false; }
+  if (d1) lines++; if (d2) lines++;
   return lines;
 }
 
-const WIN_LINES = 3;
+// ---- 로비 설정 UI ----
+function renderWinSeg() {
+  const seg = $("winSeg");
+  seg.innerHTML = "";
+  const max = maxLines(pickSize);
+  // 1빙고 ~ (적당한 상한). 너무 많으면 3까지만 흔하게, 그래도 최대치 제공
+  const opts = [];
+  for (let i=1;i<=Math.min(max,5);i++) opts.push(i);
+  if (pickWin > opts[opts.length-1]) pickWin = opts[opts.length-1];
+  opts.forEach(v => {
+    const b = document.createElement("button");
+    b.textContent = v + " 빙고";
+    b.dataset.win = v;
+    if (v === pickWin) b.classList.add("sel");
+    b.addEventListener("click", () => {
+      pickWin = v;
+      [...seg.children].forEach(c=>c.classList.remove("sel"));
+      b.classList.add("sel");
+    });
+    seg.appendChild(b);
+  });
+}
 
+$("sizeSeg").querySelectorAll("button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    pickSize = +btn.dataset.size;
+    $("sizeSeg").querySelectorAll("button").forEach(b=>b.classList.remove("sel"));
+    btn.classList.add("sel");
+    renderWinSeg();
+  });
+});
+renderWinSeg();
+
+// ---- 대기방 보드 미리보기 그리기 ----
+function drawBoardGrid(el, board, size) {
+  el.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+  el.innerHTML = "";
+  board.forEach(num => {
+    const d = document.createElement("div");
+    d.className = "cell";
+    d.style.cursor = "default";
+    d.textContent = num;
+    el.appendChild(d);
+  });
+}
+
+// ---- 방 만들기 ----
 $("createBtn").addEventListener("click", async () => {
   myName = ($("nameInput").value.trim() || "방장").slice(0,6);
   roomCode = genCode();
   myRole = "host";
-  myBoard = shuffleBoard();
+  myBoard = shuffleBoard(pickSize);
   try {
     await set(ref(db, `rooms/${roomCode}`), {
       status: "waiting",
       currentTurn: "host",
       called: [],
       winner: "",
+      size: pickSize,
+      winLines: pickWin,
       host: { name: myName, board: myBoard, present: true },
     });
     onDisconnect(ref(db, `rooms/${roomCode}/host/present`)).set(false);
     $("roomCodeText").textContent = roomCode;
+    $("waitSetInfo").textContent = `${pickSize}×${pickSize} 판 · ${pickWin}빙고 승리`;
+    drawBoardGrid($("waitBoard"), myBoard, pickSize);
     show("waiting");
     subscribe();
   } catch(e){ $("lobbyErr").textContent = "방 생성 실패: " + e.message; }
 });
 
+// ---- 대기방: 숫자판 다시 섞기 (방장만, 게임 시작 전) ----
+$("reshuffleWaitBtn").addEventListener("click", async () => {
+  if (!roomCode || myRole !== "host") return;
+  myBoard = shuffleBoard(pickSize);
+  drawBoardGrid($("waitBoard"), myBoard, pickSize);
+  try {
+    await update(ref(db, `rooms/${roomCode}/host`), { board: myBoard });
+  } catch(e){ /* 무시 */ }
+});
+
+// ---- 방 입장 ----
 $("joinBtn").addEventListener("click", async () => {
   myName = ($("nameInput").value.trim() || "손님").slice(0,6);
   roomCode = ($("codeInput").value.trim().toUpperCase());
   if (roomCode.length !== 4) { $("lobbyErr").textContent="방 코드 4자리를 입력하세요."; return; }
   myRole = "guest";
-  myBoard = shuffleBoard();
   try {
     const snap = await get(ref(db, `rooms/${roomCode}`));
     if (!snap.exists()) { $("lobbyErr").textContent="그런 방이 없어요."; return; }
-    if (snap.val().guest) { $("lobbyErr").textContent="이미 꽉 찬 방이에요."; return; }
+    const room = snap.val();
+    if (room.guest) { $("lobbyErr").textContent="이미 꽉 찬 방이에요."; return; }
+    const size = room.size || 5;
+    myBoard = shuffleBoard(size);   // 게스트는 방장이 정한 크기를 따름
     await update(ref(db, `rooms/${roomCode}`), {
       status: "playing",
       guest: { name: myName, board: myBoard, present: true },
@@ -293,15 +378,19 @@ function subscribe() {
 }
 
 function render(room) {
-  if (room.status === "playing") {
-    show("game");
-  }
+  const size = room.size || 5;
+  const winLines = room.winLines || 3;
+
+  if (room.status === "playing") show("game");
 
   const called = room.called || [];
   const myData = room[myRole];
   const oppRole = myRole === "host" ? "guest" : "host";
   const oppData = room[oppRole];
   if (!myData) return;
+
+  // 방장 화면: 내 보드가 서버 값과 다르면 동기화(다시섞기 반영)
+  if (myData.board) myBoard = myData.board;
 
   $("vsText").textContent = oppData ? `vs ${oppData.name}` : "상대 대기중";
 
@@ -311,11 +400,20 @@ function render(room) {
   else if (myTurn) { pill.textContent = "내 차례!"; pill.className="turn-pill turn-mine"; }
   else { pill.textContent = "상대 차례"; pill.className="turn-pill turn-theirs"; }
 
-  const myLines = countBingo(myData.board, called);
-  const letters = $("bingoCount").children;
-  for (let i=0;i<5;i++) letters[i].classList.toggle("on", i < myLines);
+  // 빙고 카운트 표시 (winLines 만큼 칸)
+  const myLines = countBingo(myData.board, called, size);
+  const bc = $("bingoCount");
+  bc.innerHTML = "";
+  for (let i=0;i<winLines;i++){
+    const d = document.createElement("div");
+    d.className = "letter" + (i < myLines ? " on" : "");
+    d.textContent = i+1;
+    bc.appendChild(d);
+  }
 
+  // 보드 그리기
   const board = $("board");
+  board.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
   board.innerHTML = "";
   myData.board.forEach(num => {
     const btn = document.createElement("button");
@@ -331,16 +429,16 @@ function render(room) {
 
   if (room.winner) $("hint").textContent = "";
   else if (room.status !== "playing") $("hint").textContent = "상대를 기다리는 중...";
-  else if (myTurn) $("hint").textContent = "숫자를 하나 선택하세요";
-  else $("hint").textContent = "상대가 숫자를 고르고 있어요";
+  else if (myTurn) $("hint").textContent = `숫자를 선택하세요 (${myLines}/${winLines} 빙고)`;
+  else $("hint").textContent = `상대가 고르는 중 (${myLines}/${winLines} 빙고)`;
 
   if (!room.winner && room.status === "playing") {
-    if (myLines >= WIN_LINES) {
+    if (myLines >= winLines) {
       update(ref(db, `rooms/${roomCode}`), { winner: myRole });
     }
   }
 
-  if (room.winner) showResult(room.winner === myRole);
+  if (room.winner) showResult(room.winner === myRole, winLines);
 }
 
 async function callNumber(num) {
@@ -354,16 +452,14 @@ async function callNumber(num) {
   await update(ref(db, `rooms/${roomCode}`), { called, currentTurn: next });
 }
 
-function showResult(iWon) {
+function showResult(iWon, winLines) {
   $("overlay").classList.remove("hidden");
   $("resultBig").textContent = iWon ? "WIN!" : "LOSE";
   $("resultBig").className = "big " + (iWon ? "win" : "lose");
-  $("resultMsg").textContent = iWon ? "3빙고 완성! 축하해요 🎉" : "아쉽네요. 다시 도전!";
+  $("resultMsg").textContent = iWon ? `${winLines}빙고 완성! 축하해요 🎉` : "아쉽네요. 다시 도전!";
 }
 
-$("againBtn").addEventListener("click", () => {
-  location.reload();
-});
+$("againBtn").addEventListener("click", () => { location.reload(); });
 </script>
 </body>
 </html>
