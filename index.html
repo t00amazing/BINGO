@@ -1,1 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>둘이서 빙고</title>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Black+Han+Sans&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1a1625;
+    --panel: #251f35;
+    --line: #3a3150;
+    --ink: #f4f0ff;
+    --muted: #9b91b8;
+    --accent: #ff5d8f;
+    --accent2: #4dd4c4;
+    --gold: #ffd66b;
+    --mark: #ff5d8f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Gowun Dodum', sans-serif;
+    background: radial-gradient(circle at 20% 10%, #2d2440 0%, var(--bg) 55%);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+  }
+  .wrap { width: 100%; max-width: 480px; }
+  h1 {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: clamp(2.2rem, 9vw, 3.2rem);
+    text-align: center;
+    line-height: 1.05;
+    letter-spacing: -1px;
+    margin-bottom: 4px;
+  }
+  h1 .b1 { color: var(--accent); }
+  h1 .b2 { color: var(--accent2); }
+  h1 .b3 { color: var(--gold); }
+  .sub { text-align: center; color: var(--muted); margin-bottom: 22px; font-size: .9rem; }
 
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 22px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.35);
+  }
+  .hidden { display: none !important; }
+
+  label { display:block; font-size:.85rem; color: var(--muted); margin: 12px 0 6px; }
+  input {
+    width: 100%; padding: 13px 15px; font-size: 1rem;
+    background: #1c1729; border: 1px solid var(--line);
+    border-radius: 12px; color: var(--ink); font-family: inherit;
+    text-align: center; letter-spacing: 2px;
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    width: 100%; padding: 14px; font-size: 1.05rem; font-family: inherit;
+    border: none; border-radius: 12px; cursor: pointer; margin-top: 14px;
+    font-weight: bold; transition: transform .1s, filter .2s;
+  }
+  button:active { transform: scale(.97); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-pink { background: var(--accent); color: #2a0a18; }
+  .btn-teal { background: var(--accent2); color: #06241f; }
+  .btn-ghost { background: transparent; border:1px solid var(--line); color: var(--muted); }
+  .divider { text-align:center; color: var(--muted); margin: 16px 0 2px; font-size:.8rem; }
+
+  .roomcode-show {
+    text-align:center; margin: 14px 0;
+  }
+  .roomcode-show .code {
+    font-family:'Black Han Sans'; font-size: 2.6rem; letter-spacing: 8px;
+    color: var(--gold); margin-top: 4px;
+  }
+
+  .status-bar {
+    display:flex; justify-content: space-between; align-items:center;
+    margin-bottom: 14px; font-size:.85rem;
+  }
+  .turn-pill {
+    padding: 7px 14px; border-radius: 999px; font-weight:bold; font-size:.85rem;
+  }
+  .turn-mine { background: var(--accent2); color:#06241f; }
+  .turn-theirs { background: #332b48; color: var(--muted); }
+
+  .bingo-count {
+    display:flex; gap:6px; align-items:center; justify-content:center; margin-bottom:16px;
+  }
+  .bingo-count .letter {
+    width: 34px; height: 34px; border-radius: 8px; display:flex; align-items:center;
+    justify-content:center; font-family:'Black Han Sans'; background:#1c1729;
+    border:1px solid var(--line); color: var(--muted);
+  }
+  .bingo-count .letter.on { background: var(--gold); color:#2a1c00; border-color: var(--gold); }
+
+  .board {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+  }
+  .cell {
+    aspect-ratio: 1; border-radius: 12px; border: 1px solid var(--line);
+    background:#1c1729; color: var(--ink); font-size: clamp(1.1rem, 5vw, 1.6rem);
+    font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    font-family: inherit; transition: all .15s; position:relative;
+  }
+  .cell:not(:disabled):hover { border-color: var(--accent2); }
+  .cell.marked {
+    background: var(--mark); color:#2a0a18; border-color: var(--mark);
+    animation: pop .25s;
+  }
+  .cell:disabled { cursor: default; }
+  @keyframes pop { 0%{transform:scale(.8)} 60%{transform:scale(1.12)} 100%{transform:scale(1)} }
+
+  .hint { text-align:center; color: var(--muted); font-size:.85rem; margin-top:14px; min-height:1.2em; }
+
+  .overlay {
+    position: fixed; inset:0; background: rgba(10,7,18,.85);
+    display:flex; align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .result-box { text-align:center; }
+  .result-box .big {
+    font-family:'Black Han Sans'; font-size: clamp(3rem,16vw,5rem); line-height:1;
+  }
+  .win { color: var(--gold); } .lose { color: var(--muted); }
+  .err { color: var(--accent); text-align:center; margin-top:10px; font-size:.85rem; min-height:1.1em;}
+  .small { font-size:.78rem; color:var(--muted); text-align:center; margin-top:10px; line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="b1">둘</span><span class="b2">이</span><span class="b3">서</span> 빙고</h1>
+  <p class="sub">방을 만들고 코드를 친구에게 보내세요</p>
+
+  <!-- 1. 로비 -->
+  <div id="lobby" class="card">
+    <label>닉네임</label>
+    <input id="nameInput" placeholder="이름" maxlength="6" style="letter-spacing:0">
+    <button id="createBtn" class="btn-pink">새 방 만들기</button>
+    <div class="divider">— 또는 —</div>
+    <label>방 코드 입력</label>
+    <input id="codeInput" placeholder="ABCD" maxlength="4">
+    <button id="joinBtn" class="btn-teal">방 입장하기</button>
+    <div id="lobbyErr" class="err"></div>
+  </div>
+
+  <!-- 2. 대기방 -->
+  <div id="waiting" class="card hidden">
+    <div class="roomcode-show">
+      <div style="color:var(--muted);font-size:.85rem">방 코드</div>
+      <div class="code" id="roomCodeText">----</div>
+    </div>
+    <p class="small" id="waitMsg">친구가 들어오기를 기다리는 중...</p>
+  </div>
+
+  <!-- 3. 게임 -->
+  <div id="game" class="card hidden">
+    <div class="status-bar">
+      <span id="vsText" style="color:var(--muted)"></span>
+      <span id="turnPill" class="turn-pill turn-theirs">대기</span>
+    </div>
+    <div class="bingo-count" id="bingoCount">
+      <div class="letter">B</div><div class="letter">I</div><div class="letter">N</div>
+      <div class="letter">G</div><div class="letter">O</div>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="hint" id="hint"></div>
+  </div>
+</div>
+
+<!-- 결과 -->
+<div id="overlay" class="overlay hidden">
+  <div class="result-box">
+    <div id="resultBig" class="big"></div>
+    <p id="resultMsg" class="sub" style="margin-top:10px"></p>
+    <button id="againBtn" class="btn-pink" style="max-width:240px;margin:18px auto 0">다시 하기</button>
+  </div>
+</div>
+
+<!-- ============================================================= -->
+<!--  Firebase 연동                                                 -->
+<!-- ============================================================= -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, update, onValue, onDisconnect }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+// ★  여기에 Firebase 콘솔에서 복사한 firebaseConfig 를 붙여넣으세요!  ★
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyAn0-SpCgMKGsSR_xot1VOlutGLJpmRtHY",
+  authDomain: "test-d9573.firebaseapp.com",
+  databaseURL: "https://test-d9573-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "test-d9573",
+  storageBucket: "test-d9573.firebasestorage.app",
+  messagingSenderId: "908209227158",
+  appId: "1:908209227158:web:420d33bf6369975f5fc9b7",
+  measurementId: "G-2GZG7T2M2W"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// ---- 상태 ----
+let myRole = null;      // 'host' | 'guest'
+let roomCode = null;
+let myName = "나";
+let myBoard = [];       // 1~25 숫자 배열 (내 보드 배치)
+let unsub = null;       // 구독 해제 함수
+
+const $ = (id) => document.getElementById(id);
+
+// ---- 화면 전환 ----
+function show(screen) {
+  ["lobby","waiting","game"].forEach(s => $(s).classList.add("hidden"));
+  $(screen).classList.remove("hidden");
+}
+
+// ---- 보드 숫자 1~25 셔플 ----
+function shuffleBoard() {
+  const arr = Array.from({length:25}, (_,i)=>i+1);
+  for (let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+// ---- 랜덤 방 코드 ----
+function genCode() {
+  const c = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  let s=""; for(let i=0;i<4;i++) s+=c[Math.floor(Math.random()*c.length)];
+  return s;
+}
+
+// ---- 빙고 줄 수 계산 ----
+function countBingo(board, called) {
+  const isMarked = (n) => called.includes(n);
+  const g = []; // 5x5 마크 여부
+  for (let r=0;r<5;r++){ g[r]=[]; for(let c=0;c<5;c++) g[r][c]=isMarked(board[r*5+c]); }
+  let lines = 0;
+  for (let r=0;r<5;r++) if (g[r].every(Boolean)) lines++;       // 가로
+  for (let c=0;c<5;c++) if (g.every(row=>row[c])) lines++;       // 세로
+  if ([0,1,2,3,4].every(i=>g[i][i])) lines++;                   // 대각 ↘
+  if ([0,1,2,3,4].every(i=>g[i][4-i])) lines++;                 // 대각 ↙
+  return lines;
+}
+
+const WIN_LINES = 3; // 3빙고면 승리
+
+// ---- 방 만들기 ----
+$("createBtn").addEventListener("click", async () => {
+  myName = ($("nameInput").value.trim() || "방장").slice(0,6);
+  roomCode = genCode();
+  myRole = "host";
+  myBoard = shuffleBoard();
+  try {
+    await set(ref(db, `rooms/${roomCode}`), {
+      status: "waiting",
+      currentTurn: "host",
+      called: [],
+      winner: "",
+      host: { name: myName, board: myBoard, present: true },
+    });
+    onDisconnect(ref(db, `rooms/${roomCode}/host/present`)).set(false);
+    $("roomCodeText").textContent = roomCode;
+    show("waiting");
+    subscribe();
+  } catch(e){ $("lobbyErr").textContent = "방 생성 실패: " + e.message; }
+});
+
+// ---- 방 입장 ----
+$("joinBtn").addEventListener("click", async () => {
+  myName = ($("nameInput").value.trim() || "손님").slice(0,6);
+  roomCode = ($("codeInput").value.trim().toUpperCase());
+  if (roomCode.length !== 4) { $("lobbyErr").textContent="방 코드 4자리를 입력하세요."; return; }
+  myRole = "guest";
+  myBoard = shuffleBoard();
+  try {
+    const snap = await get(ref(db, `rooms/${roomCode}`));
+    if (!snap.exists()) { $("lobbyErr").textContent="그런 방이 없어요."; return; }
+    if (snap.val().guest) { $("lobbyErr").textContent="이미 꽉 찬 방이에요."; return; }
+    await update(ref(db, `rooms/${roomCode}`), {
+      status: "playing",
+      guest: { name: myName, board: myBoard, present: true },
+    });
+    onDisconnect(ref(db, `rooms/${roomCode}/guest/present`)).set(false);
+    show("game");
+    subscribe();
+  } catch(e){ $("lobbyErr").textContent = "입장 실패: " + e.message; }
+});
+
+// ---- 실시간 구독 ----
+function subscribe() {
+  if (unsub) unsub();
+  unsub = onValue(ref(db, `rooms/${roomCode}`), (snap) => {
+    const room = snap.val();
+    if (!room) return;
+    render(room);
+  });
+}
+
+// ---- 화면 그리기 ----
+function render(room) {
+  // 게스트가 들어오면 게임 시작
+  if (room.status === "playing") {
+    show("game");
+  }
+
+  const called = room.called || [];
+  const myData = room[myRole];
+  const oppRole = myRole === "host" ? "guest" : "host";
+  const oppData = room[oppRole];
+  if (!myData) return;
+
+  // 상대 정보
+  $("vsText").textContent = oppData ? `vs ${oppData.name}` : "상대 대기중";
+
+  // 턴 표시
+  const myTurn = room.currentTurn === myRole;
+  const pill = $("turnPill");
+  if (room.winner) { pill.textContent = "게임 종료"; pill.className="turn-pill turn-theirs"; }
+  else if (myTurn) { pill.textContent = "내 차례!"; pill.className="turn-pill turn-mine"; }
+  else { pill.textContent = "상대 차례"; pill.className="turn-pill turn-theirs"; }
+
+  // 빙고 카운트
+  const myLines = countBingo(myData.board, called);
+  const letters = $("bingoCount").children;
+  for (let i=0;i<5;i++) letters[i].classList.toggle("on", i < myLines);
+
+  // 보드 그리기
+  const board = $("board");
+  board.innerHTML = "";
+  myData.board.forEach(num => {
+    const btn = document.createElement("button");
+    btn.className = "cell";
+    btn.textContent = num;
+    const isCalled = called.includes(num);
+    if (isCalled) btn.classList.add("marked");
+    const canPlay = myTurn && !isCalled && !room.winner && room.status==="playing";
+    btn.disabled = !canPlay;
+    btn.addEventListener("click", () => callNumber(num));
+    board.appendChild(btn);
+  });
+
+  // 힌트
+  if (room.winner) $("hint").textContent = "";
+  else if (room.status !== "playing") $("hint").textContent = "상대를 기다리는 중...";
+  else if (myTurn) $("hint").textContent = "숫자를 하나 선택하세요";
+  else $("hint").textContent = "상대가 숫자를 고르고 있어요";
+
+  // 승리 판정
+  if (!room.winner && room.status === "playing") {
+    if (myLines >= WIN_LINES) {
+      update(ref(db, `rooms/${roomCode}`), { winner: myRole });
+    }
+  }
+
+  // 결과 표시
+  if (room.winner) showResult(room.winner === myRole);
+}
+
+// ---- 숫자 호명 ----
+async function callNumber(num) {
+  const snap = await get(ref(db, `rooms/${roomCode}`));
+  const room = snap.val();
+  if (!room || room.winner || room.currentTurn !== myRole) return;
+  const called = room.called || [];
+  if (called.includes(num)) return;
+  called.push(num);
+  const next = myRole === "host" ? "guest" : "host";
+  await update(ref(db, `rooms/${roomCode}`), { called, currentTurn: next });
+}
+
+// ---- 결과 ----
+function showResult(iWon) {
+  $("overlay").classList.remove("hidden");
+  $("resultBig").textContent = iWon ? "WIN!" : "LOSE";
+  $("resultBig").className = "big " + (iWon ? "win" : "lose");
+  $("resultMsg").textContent = iWon ? "3빙고 완성! 축하해요 🎉" : "아쉽네요. 다시 도전!";
+}
+
+// ---- 다시 하기 ----
+$("againBtn").addEventListener("click", () => {
+  location.reload();
+});
+</script>
+</body>
+</html>
