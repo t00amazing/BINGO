@@ -182,22 +182,11 @@
   </div>
 </div>
 
-<!-- ============================================================= -->
-<!--  Firebase 연동                                                 -->
-<!-- ============================================================= -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, get, update, onValue, onDisconnect }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-// ★  여기에 Firebase 콘솔에서 복사한 firebaseConfig 를 붙여넣으세요!  ★
-// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyAn0-SpCgMKGsSR_xot1VOlutGLJpmRtHY",
   authDomain: "test-d9573.firebaseapp.com",
@@ -208,27 +197,23 @@ const firebaseConfig = {
   appId: "1:908209227158:web:420d33bf6369975f5fc9b7",
   measurementId: "G-2GZG7T2M2W"
 };
-★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// ---- 상태 ----
-let myRole = null;      // 'host' | 'guest'
+let myRole = null;
 let roomCode = null;
 let myName = "나";
-let myBoard = [];       // 1~25 숫자 배열 (내 보드 배치)
-let unsub = null;       // 구독 해제 함수
+let myBoard = [];
+let unsub = null;
 
 const $ = (id) => document.getElementById(id);
 
-// ---- 화면 전환 ----
 function show(screen) {
   ["lobby","waiting","game"].forEach(s => $(s).classList.add("hidden"));
   $(screen).classList.remove("hidden");
 }
 
-// ---- 보드 숫자 1~25 셔플 ----
 function shuffleBoard() {
   const arr = Array.from({length:25}, (_,i)=>i+1);
   for (let i=arr.length-1;i>0;i--){
@@ -238,29 +223,26 @@ function shuffleBoard() {
   return arr;
 }
 
-// ---- 랜덤 방 코드 ----
 function genCode() {
   const c = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   let s=""; for(let i=0;i<4;i++) s+=c[Math.floor(Math.random()*c.length)];
   return s;
 }
 
-// ---- 빙고 줄 수 계산 ----
 function countBingo(board, called) {
   const isMarked = (n) => called.includes(n);
-  const g = []; // 5x5 마크 여부
+  const g = [];
   for (let r=0;r<5;r++){ g[r]=[]; for(let c=0;c<5;c++) g[r][c]=isMarked(board[r*5+c]); }
   let lines = 0;
-  for (let r=0;r<5;r++) if (g[r].every(Boolean)) lines++;       // 가로
-  for (let c=0;c<5;c++) if (g.every(row=>row[c])) lines++;       // 세로
-  if ([0,1,2,3,4].every(i=>g[i][i])) lines++;                   // 대각 ↘
-  if ([0,1,2,3,4].every(i=>g[i][4-i])) lines++;                 // 대각 ↙
+  for (let r=0;r<5;r++) if (g[r].every(Boolean)) lines++;
+  for (let c=0;c<5;c++) if (g.every(row=>row[c])) lines++;
+  if ([0,1,2,3,4].every(i=>g[i][i])) lines++;
+  if ([0,1,2,3,4].every(i=>g[i][4-i])) lines++;
   return lines;
 }
 
-const WIN_LINES = 3; // 3빙고면 승리
+const WIN_LINES = 3;
 
-// ---- 방 만들기 ----
 $("createBtn").addEventListener("click", async () => {
   myName = ($("nameInput").value.trim() || "방장").slice(0,6);
   roomCode = genCode();
@@ -281,7 +263,6 @@ $("createBtn").addEventListener("click", async () => {
   } catch(e){ $("lobbyErr").textContent = "방 생성 실패: " + e.message; }
 });
 
-// ---- 방 입장 ----
 $("joinBtn").addEventListener("click", async () => {
   myName = ($("nameInput").value.trim() || "손님").slice(0,6);
   roomCode = ($("codeInput").value.trim().toUpperCase());
@@ -302,7 +283,6 @@ $("joinBtn").addEventListener("click", async () => {
   } catch(e){ $("lobbyErr").textContent = "입장 실패: " + e.message; }
 });
 
-// ---- 실시간 구독 ----
 function subscribe() {
   if (unsub) unsub();
   unsub = onValue(ref(db, `rooms/${roomCode}`), (snap) => {
@@ -312,9 +292,7 @@ function subscribe() {
   });
 }
 
-// ---- 화면 그리기 ----
 function render(room) {
-  // 게스트가 들어오면 게임 시작
   if (room.status === "playing") {
     show("game");
   }
@@ -325,22 +303,18 @@ function render(room) {
   const oppData = room[oppRole];
   if (!myData) return;
 
-  // 상대 정보
   $("vsText").textContent = oppData ? `vs ${oppData.name}` : "상대 대기중";
 
-  // 턴 표시
   const myTurn = room.currentTurn === myRole;
   const pill = $("turnPill");
   if (room.winner) { pill.textContent = "게임 종료"; pill.className="turn-pill turn-theirs"; }
   else if (myTurn) { pill.textContent = "내 차례!"; pill.className="turn-pill turn-mine"; }
   else { pill.textContent = "상대 차례"; pill.className="turn-pill turn-theirs"; }
 
-  // 빙고 카운트
   const myLines = countBingo(myData.board, called);
   const letters = $("bingoCount").children;
   for (let i=0;i<5;i++) letters[i].classList.toggle("on", i < myLines);
 
-  // 보드 그리기
   const board = $("board");
   board.innerHTML = "";
   myData.board.forEach(num => {
@@ -355,24 +329,20 @@ function render(room) {
     board.appendChild(btn);
   });
 
-  // 힌트
   if (room.winner) $("hint").textContent = "";
   else if (room.status !== "playing") $("hint").textContent = "상대를 기다리는 중...";
   else if (myTurn) $("hint").textContent = "숫자를 하나 선택하세요";
   else $("hint").textContent = "상대가 숫자를 고르고 있어요";
 
-  // 승리 판정
   if (!room.winner && room.status === "playing") {
     if (myLines >= WIN_LINES) {
       update(ref(db, `rooms/${roomCode}`), { winner: myRole });
     }
   }
 
-  // 결과 표시
   if (room.winner) showResult(room.winner === myRole);
 }
 
-// ---- 숫자 호명 ----
 async function callNumber(num) {
   const snap = await get(ref(db, `rooms/${roomCode}`));
   const room = snap.val();
@@ -384,7 +354,6 @@ async function callNumber(num) {
   await update(ref(db, `rooms/${roomCode}`), { called, currentTurn: next });
 }
 
-// ---- 결과 ----
 function showResult(iWon) {
   $("overlay").classList.remove("hidden");
   $("resultBig").textContent = iWon ? "WIN!" : "LOSE";
@@ -392,7 +361,6 @@ function showResult(iWon) {
   $("resultMsg").textContent = iWon ? "3빙고 완성! 축하해요 🎉" : "아쉽네요. 다시 도전!";
 }
 
-// ---- 다시 하기 ----
 $("againBtn").addEventListener("click", () => {
   location.reload();
 });
